@@ -1,0 +1,134 @@
+---
+import Layout from "../layouts/Layout.astro";
+import BackdropSky from "../components/BackdropSky.astro";
+import Card from "../components/Card.astro";
+import KofiWidget from "../components/KofiWidget.astro";
+import { intensityFor } from "../lib/wind/intensity";
+import { directionFor } from "../lib/wind/direction";
+import { skyForDate, sunPosition } from "../lib/wind/sky";
+import type { RainState } from "../lib/wind/rain";
+import { WindDataSchema } from "../lib/wind/data";
+import type { WindData } from "../lib/wind/data";
+import { nowInMadrid } from "../lib/now";
+import windJson from "../../public/wind.json";
+
+const parsed = WindDataSchema.safeParse(windJson);
+const windData: WindData = parsed.success
+  ? parsed.data
+  : (() => {
+      console.error("[index] wind.json inválido:", parsed.error.issues);
+      return {
+        lastUpdate: Date.now(),
+        data: {
+          title: "Datos no disponibles",
+          subtitle: "No se pudieron cargar los datos de viento.",
+          changeText: "",
+          isWindy: false,
+        },
+        currentWind: "0",
+        currentWindDirection: null,
+        currentWindKmh: 0,
+        currentWindDeg: 92,
+        currentGustKmh: null,
+        currentTemp: null,
+        currentPrecip: null,
+        currentTide: null,
+        forecast: [],
+      };
+    })();
+
+const tzNow = nowInMadrid();
+const hour = tzNow.getHours();
+const now = new Date();
+const sky = skyForDate(now);
+const sunPos = sunPosition(now);
+
+const speedKt = parseInt(windData.currentWind, 10);
+const speed = windData.currentWindKmh ?? Math.round(speedKt * 1.852);
+const windAngle = windData.currentWindDeg ?? 92;
+const rain: RainState = "none";
+
+const intensity = intensityFor(speed);
+const direction = directionFor(windAngle, speed);
+
+const changeText = windData.data?.changeText ?? "";
+const forecast = windData.forecast ?? [];
+const currentGust = windData.currentGustKmh ?? null;
+const currentTemp = windData.currentTemp ?? null;
+const currentPrecip = windData.currentPrecip ?? null;
+const currentTide = windData.currentTide ?? null;
+
+const isWindy = intensity.tone !== "negative" && intensity.tone !== "neutral";
+const titlePfx = isWindy
+  ? `Sí, ${direction.local} de ${speed} km/h`
+  : `No hace viento (${speed} km/h)`;
+const title = `${titlePfx} · Hace viento en Tarifa`;
+
+const DevPanel = import.meta.env.DEV
+  ? (await import("../components/DevPanel.astro")).default
+  : null;
+
+const jsonLd = JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: "¿Hace viento? Tarifa",
+  url: "https://www.haceviento.com",
+  applicationCategory: "WeatherApplication",
+  operatingSystem: "Any",
+  description:
+    "Dirección, velocidad y previsión del viento en Tarifa en tiempo real.",
+  offers: { "@type": "Offer", price: "0", priceCurrency: "EUR" },
+});
+---
+
+<Layout title={title}>
+  <script is:inline type="application/ld+json" slot="head" set:html={jsonLd} />
+
+  <BackdropSky
+    sky={sky}
+    intensity={intensity}
+    windAngle={windAngle}
+    sunPos={sunPos}
+  />
+
+  <main>
+    <Card
+      speed={speed}
+      speedKt={Number.isFinite(speedKt) ? speedKt : Math.round(speed / 1.852)}
+      windAngle={windAngle}
+      direction={direction}
+      intensity={intensity}
+      sky={sky}
+      rain={rain}
+      forecast={forecast}
+      changeText={changeText}
+      lastUpdate={windData.lastUpdate}
+      currentGust={currentGust}
+      currentTemp={currentTemp}
+      currentPrecip={currentPrecip}
+      currentTide={currentTide}
+    />
+  </main>
+
+  {DevPanel && <DevPanel speed={speed} windAngle={windAngle} hour={hour} />}
+
+  <KofiWidget
+    slot="floating-widgets"
+    username="mobasergio"
+    color={sky.cardBg}
+    textColor="#fff"
+    position="bottom-right"
+    size={46}
+  />
+</Layout>
+
+<style>
+  main {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+</style>

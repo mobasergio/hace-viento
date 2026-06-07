@@ -1,0 +1,457 @@
+---
+import type { Sky } from "../lib/wind/sky";
+import type { Intensity } from "../lib/wind/intensity";
+import { discDisplay } from "../lib/wind/sky";
+
+interface SunPos {
+  x: number;
+  y: number;
+  body: "sun" | "moon" | "hidden";
+}
+
+interface Props {
+  sky: Sky;
+  intensity: Intensity;
+  windAngle: number;
+  sunPos: SunPos;
+}
+
+const { sky, intensity, windAngle, sunPos } = Astro.props;
+
+const stars = Array.from({ length: 80 }, (_, i) => ({
+  cx: (i * 97 + 13) % 100,
+  cy: (i * 53 + 7) % 85,
+  r: i % 7 === 0 ? 0.18 : i % 3 === 0 ? 0.11 : 0.06,
+  delay: `${((i % 7) * -0.5).toFixed(1)}s`,
+  dur: `${3 + (i % 5)}s`,
+  opMin: (0.15 + (i % 4) * 0.1).toFixed(2),
+  opMax: (0.55 + (i % 4) * 0.15).toFixed(2),
+}));
+
+const { discX, discY, haloOpacity, haloW, haloH, baseHalo } = discDisplay(
+  sky,
+  sunPos,
+);
+---
+
+<div
+  class="backdrop"
+  data-stars={sky.stars ? "true" : "false"}
+  data-disc={sunPos.body}
+  style={`
+    --sky-top:${sky.top};
+    --sky-mid:${sky.mid};
+    --sky-bottom:${sky.bottom};
+    --halo:${sky.horizonGlow};
+    --base-halo:${baseHalo};
+    --accent:${sky.accent};
+    --halo-opacity:${haloOpacity};
+    --halo-w:${haloW};
+    --halo-h:${haloH};
+    --disc-x:${discX};
+    --disc-y:${discY};
+  `}
+  aria-hidden="true"
+>
+  <div class="sky-base"></div>
+
+  <div class="horizon-halo"></div>
+
+  <svg
+    class="stars"
+    viewBox="0 0 100 100"
+    preserveAspectRatio="xMidYMid slice"
+    width="100%"
+    height="100%"
+  >
+    {
+      stars.map((s) => (
+        <circle
+          class="star"
+          cx={s.cx}
+          cy={s.cy}
+          r={s.r}
+          fill="#fff"
+          style={`--op-min:${s.opMin};--op-max:${s.opMax};--dur:${s.dur};animation-delay:${s.delay};`}
+        />
+      ))
+    }
+  </svg>
+
+  <div
+    class={`disc ${sunPos.body === "sun" ? "disc--sun" : sunPos.body === "moon" ? "disc--moon" : ""}`}
+  >
+  </div>
+
+  <canvas
+    id="wind-canvas"
+    data-count={intensity.particles}
+    data-streak={intensity.streakSpeed}
+    data-angle={windAngle}></canvas>
+
+  <div class="grain" aria-hidden="true"></div>
+</div>
+
+<style>
+  .backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+    background: var(--sky-bottom);
+  }
+
+  .sky-base {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(
+        ellipse 120% 55% at 50% 100%,
+        var(--base-halo) 0%,
+        transparent 55%
+      ),
+      linear-gradient(
+        180deg,
+        var(--sky-top) 0%,
+        var(--sky-mid) 48%,
+        var(--sky-bottom) 100%
+      );
+  }
+
+  .horizon-halo {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -20%;
+    height: 70%;
+    background: radial-gradient(
+      ellipse var(--halo-w) var(--halo-h) at var(--disc-x) 100%,
+      var(--halo) 0%,
+      transparent 58%
+    );
+    opacity: var(--halo-opacity);
+    mix-blend-mode: screen;
+  }
+
+  .stars {
+    position: absolute;
+    inset: 0;
+    opacity: 0.82;
+    transition: opacity 0.6s ease;
+  }
+
+  .backdrop[data-stars="false"] .stars {
+    opacity: 0;
+  }
+  .backdrop[data-disc="hidden"] .disc {
+    display: none;
+  }
+
+  @keyframes twinkle {
+    0%,
+    100% {
+      opacity: var(--op-min);
+    }
+    50% {
+      opacity: var(--op-max);
+    }
+  }
+
+  .star {
+    animation: twinkle var(--dur) ease-in-out infinite;
+  }
+
+  .disc {
+    position: absolute;
+    left: var(--disc-x);
+    top: var(--disc-y);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+
+  .disc--sun {
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    background: radial-gradient(
+      circle,
+      rgb(255 248 232 / 0.95) 0%,
+      rgb(255 220 150 / 0.75) 22%,
+      rgb(255 180 90 / 0.35) 42%,
+      rgb(255 150 60 / 0) 72%
+    );
+    filter: blur(0.5px);
+    mix-blend-mode: screen;
+    animation: sun-pulse 14s ease-in-out infinite;
+  }
+
+  .disc--sun::before {
+    content: "";
+    position: absolute;
+    inset: 40%;
+    border-radius: 50%;
+    background: radial-gradient(
+      circle,
+      rgb(255 252 240 / 0.98) 0%,
+      rgb(255 244 220 / 0.4) 60%,
+      transparent 80%
+    );
+  }
+
+  .disc--moon {
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+    background: radial-gradient(
+      circle at 38% 36%,
+      #f8faff 0%,
+      #d6def0 55%,
+      #8a94b4 100%
+    );
+    box-shadow:
+      0 0 24px rgb(200 215 255 / 0.35),
+      0 0 80px rgb(180 200 255 / 0.18),
+      inset -6px -8px 18px rgb(20 30 60 / 0.45);
+    opacity: 0.95;
+  }
+
+  .disc--moon::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background:
+      radial-gradient(
+        circle at 60% 35%,
+        rgb(100 110 130 / 0.18) 0%,
+        transparent 14%
+      ),
+      radial-gradient(
+        circle at 35% 65%,
+        rgb(100 110 130 / 0.14) 0%,
+        transparent 10%
+      ),
+      radial-gradient(
+        circle at 72% 62%,
+        rgb(100 110 130 / 0.12) 0%,
+        transparent 8%
+      );
+  }
+
+  @keyframes sun-pulse {
+    0%,
+    100% {
+      transform: translate(-50%, -50%) scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: translate(-50%, -50%) scale(1.03);
+      opacity: 0.92;
+    }
+  }
+
+  #wind-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .grain {
+    position: absolute;
+    inset: -20%;
+    opacity: 0.09;
+    pointer-events: none;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.55  0 0 0 0 0.55  0 0 0 0 0.55  0 0 0 1 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.9'/></svg>");
+    background-size: 220px 220px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .star {
+      animation: none;
+      opacity: var(--op-min);
+    }
+    .disc--sun {
+      animation: none;
+    }
+  }
+</style>
+
+<script>
+  import { skyForDate, sunPosition, discDisplay } from "../lib/wind/sky";
+  import { nowInMadrid } from "../lib/now";
+
+  const backdropEl = document.querySelector<HTMLElement>(".backdrop");
+  const discEl = backdropEl?.querySelector<HTMLElement>(".disc");
+
+  function applySky() {
+    if (!backdropEl) return;
+    const cardEl = document.querySelector<HTMLElement>(".card");
+    const now = nowInMadrid();
+    const sky = skyForDate(now);
+    const sun = sunPosition(now);
+    const { discX, discY, haloOpacity, haloW, haloH, baseHalo } = discDisplay(
+      sky,
+      sun,
+    );
+
+    backdropEl.style.setProperty("--sky-top", sky.top);
+    backdropEl.style.setProperty("--sky-mid", sky.mid);
+    backdropEl.style.setProperty("--sky-bottom", sky.bottom);
+    backdropEl.style.setProperty("--halo", sky.horizonGlow);
+    backdropEl.style.setProperty("--base-halo", baseHalo);
+    backdropEl.style.setProperty("--accent", sky.accent);
+    backdropEl.style.setProperty("--halo-opacity", haloOpacity);
+    backdropEl.style.setProperty("--halo-w", haloW);
+    backdropEl.style.setProperty("--halo-h", haloH);
+    backdropEl.style.setProperty("--disc-x", discX);
+    backdropEl.style.setProperty("--disc-y", discY);
+    backdropEl.dataset.stars = String(sky.stars);
+    backdropEl.dataset.disc = sun.body;
+
+    if (cardEl) {
+      const answerInk = cardEl.dataset.intensityColor || sky.cardInk;
+      cardEl.style.setProperty("--answer-ink", answerInk);
+      cardEl.style.setProperty("--card-bg", sky.cardBg);
+      cardEl.style.setProperty("--card-ink", sky.cardInk);
+      cardEl.style.setProperty("--muted", sky.muted);
+      cardEl.style.setProperty("--ink-soft", sky.inkSoft ?? sky.muted);
+      cardEl.style.setProperty("--accent", sky.accent);
+      cardEl.style.setProperty("--card-border", sky.cardBorder);
+    }
+
+    if (discEl) {
+      discEl.classList.toggle("disc--sun", sun.body === "sun");
+      discEl.classList.toggle("disc--moon", sun.body === "moon");
+    }
+  }
+
+  applySky();
+  setInterval(applySky, 5 * 60_000);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") applySky();
+  });
+</script>
+
+<script>
+  (function () {
+    const canvas = document.querySelector<HTMLCanvasElement>("#wind-canvas");
+    if (!canvas) return;
+
+    const reduced = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    const count = parseInt(canvas.dataset.count ?? "0", 10);
+    const streak = parseFloat(canvas.dataset.streak ?? "4");
+    const angle = parseFloat(canvas.dataset.angle ?? "92");
+
+    if (reduced || count === 0) {
+      canvas.style.display = "none";
+    } else {
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      let curAngle = angle;
+      let curStreak = streak;
+      let curCount = count;
+      let animId: number | null = null;
+      let resizeTimer: ReturnType<typeof setTimeout> | null = null;
+
+      let dirX = Math.sin(((curAngle + 180) * Math.PI) / 180);
+
+      interface Particle {
+        x: number;
+        y: number;
+        len: number;
+        opacity: number;
+        speed: number;
+        thick: number;
+        vy: number;
+      }
+      let particles: Particle[] = [];
+
+      function computeBase() {
+        return window.innerWidth / (curStreak * 60);
+      }
+
+      function resize() {
+        canvas!.width = window.innerWidth;
+        canvas!.height = window.innerHeight;
+      }
+
+      function init() {
+        const base = computeBase();
+        particles = Array.from({ length: curCount }, () => ({
+          x: Math.random() * canvas!.width,
+          y: Math.random() * canvas!.height,
+          len: 8 + Math.random() * 28,
+          opacity: 0.12 + Math.random() * 0.4,
+          speed: base * (0.7 + Math.random() * 0.6),
+          thick: Math.random() < 0.2 ? 1.4 : 0.7,
+          vy: (Math.random() - 0.5) * base * 0.4,
+        }));
+      }
+
+      function draw() {
+        if (document.visibilityState !== "visible") {
+          animId = null;
+          return;
+        }
+        ctx!.clearRect(0, 0, canvas!.width, canvas!.height);
+        ctx!.lineCap = "round";
+        for (const p of particles) {
+          ctx!.beginPath();
+          ctx!.strokeStyle = `rgba(255,255,255,${p.opacity.toFixed(2)})`;
+          ctx!.lineWidth = p.thick;
+          ctx!.moveTo(p.x, p.y);
+          ctx!.lineTo(p.x - dirX * p.len, p.y);
+          ctx!.stroke();
+          p.x += dirX * p.speed;
+          p.y += p.vy;
+          const { width: w, height: h } = canvas!;
+          if (p.x > w + 80) p.x = -80;
+          if (p.x < -80) p.x = w + 80;
+          if (p.y > h + 80) p.y = -80;
+          if (p.y < -80) p.y = h + 80;
+        }
+        animId = requestAnimationFrame(draw);
+      }
+
+      window.addEventListener(
+        "resize",
+        () => {
+          if (resizeTimer) clearTimeout(resizeTimer);
+          resizeTimer = setTimeout(() => {
+            resize();
+            init();
+          }, 150);
+        },
+        { passive: true },
+      );
+      resize();
+      init();
+      animId = requestAnimationFrame(draw);
+
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible" && animId === null) {
+          animId = requestAnimationFrame(draw);
+        }
+      });
+
+      window.addEventListener("wind:tweak", (e) => {
+        const d = (
+          e as CustomEvent<{ angle?: number; count?: number; streak?: number }>
+        ).detail;
+        if (d.angle !== undefined) {
+          curAngle = d.angle;
+          dirX = Math.sin(((d.angle + 180) * Math.PI) / 180);
+        }
+        if (d.count !== undefined) curCount = d.count;
+        if (d.streak !== undefined) curStreak = d.streak;
+        if (d.count !== undefined || d.streak !== undefined) init();
+      });
+    }
+  })();
+</script>

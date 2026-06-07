@@ -1,0 +1,70 @@
+---
+import "@fontsource-variable/inter-tight";
+import "@fontsource-variable/jetbrains-mono";
+import interTightLatin from "@fontsource-variable/inter-tight/files/inter-tight-latin-wght-normal.woff2";
+import "../styles/global.css";
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const {
+  title,
+  description = "Hace viento en Tarifa hoy: dirección (Levante o Poniente), velocidad en km/h y previsión por horas. Sin mapas. Sin rodeos.",
+} = Astro.props;
+
+const canonical = new URL(Astro.url.pathname, Astro.site).toString();
+const ogImage = new URL("/haceviento-og.jpg", Astro.site).toString();
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+
+    <meta name="theme-color" content="#0b1a3a" />
+    <meta name="generator" content={Astro.generator} />
+
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <link
+      rel="preload"
+      href={interTightLatin}
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="es_ES" />
+    <meta property="og:site_name" content="¿Hace viento?" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="¿Hace viento en Tarifa?" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+
+    <slot name="head" />
+  </head>
+  <body>
+    <slot />
+    <slot name="floating-widgets" />
+  </body>
+</html>

@@ -1,0 +1,216 @@
+---
+interface Props {
+  speed: number;
+  windAngle: number;
+  hour: number;
+}
+
+const { speed, windAngle, hour } = Astro.props;
+---
+
+<meta
+  id="_dbg"
+  data-speed={speed}
+  data-angle={windAngle}
+  data-hour={hour}
+  hidden
+/>
+
+<script>
+  import { intensityFor } from "../lib/wind/intensity";
+  import { skyForHour } from "../lib/wind/sky";
+
+  const meta = document.getElementById("_dbg") as HTMLElement | null;
+  if (meta) {
+    let curSpeed = parseFloat(meta.dataset.speed ?? "50");
+    let curAngle = parseFloat(meta.dataset.angle ?? "87");
+    let curHour = parseInt(meta.dataset.hour ?? "14", 10);
+
+    const bearingLabel = (deg: number) =>
+      ["N", "NE", "E", "SE", "S", "SO", "O", "NO"][Math.round(deg / 45) % 8];
+
+    function applyAll() {
+      const intensity = intensityFor(curSpeed);
+      const sky = skyForHour(curHour);
+
+      window.dispatchEvent(
+        new CustomEvent("wind:tweak", {
+          detail: {
+            angle: curAngle,
+            count: intensity.particles,
+            streak: intensity.streakSpeed,
+          },
+        }),
+      );
+
+      const backdrop = document.querySelector<HTMLElement>(".backdrop");
+      if (backdrop) {
+        backdrop.style.setProperty("--sky-top", sky.top);
+        backdrop.style.setProperty("--sky-mid", sky.mid);
+        backdrop.style.setProperty("--sky-bottom", sky.bottom);
+      }
+
+      const card = document.querySelector<HTMLElement>(".card");
+      if (card) {
+        card.style.setProperty("--card-bg", sky.cardBg);
+        card.style.setProperty("--card-ink", sky.cardInk);
+        card.style.setProperty("--muted", sky.muted);
+        card.style.setProperty("--ink-soft", sky.inkSoft);
+        card.style.setProperty("--accent", sky.accent);
+        card.style.setProperty("--card-border", sky.cardBorder);
+      }
+
+      const h1 = document.querySelector<HTMLElement>(".answer__text");
+      if (h1) {
+        h1.style.color = intensity.color ?? sky.cardInk;
+        h1.innerHTML = intensity.segments
+          .map((seg, i) => {
+            const cls = [seg.dim && "answer__dim"].filter(Boolean).join(" ");
+            return `<span class="${cls}">${seg.text}</span>${i < intensity.segments.length - 1 ? "<br>" : ""}`;
+          })
+          .join("");
+      }
+
+      const noteEl = document.querySelector<HTMLElement>(".answer__note");
+      if (noteEl) noteEl.textContent = intensity.note;
+
+      const info = document.getElementById("_dbg-info");
+      if (info) {
+        const dirX = Math.sin(((curAngle + 180) * Math.PI) / 180);
+        info.textContent = `dirX ${dirX.toFixed(3)} · ${intensity.particles} partículas · streak ${intensity.streakSpeed}`;
+      }
+    }
+
+    const panel = document.createElement("div");
+    panel.className = "dev-panel";
+    panel.innerHTML = `
+      <div class="dev-panel__title">
+        <span>VIENTO DEBUG</span>
+        <button id="_dbg-close" class="dev-panel__close" aria-label="Cerrar panel de debug">×</button>
+      </div>
+
+      <div class="dev-panel__row">
+        <div class="dev-panel__label">VELOCIDAD</div>
+        <input id="_dbg-speed" type="range" min="0" max="120" step="1" value="${curSpeed}" aria-label="Velocidad del viento">
+        <div id="_dbg-speed-val" class="dev-panel__val">${curSpeed} km/h</div>
+      </div>
+
+      <div class="dev-panel__row">
+        <div class="dev-panel__label">DIRECCIÓN (bearing)</div>
+        <input id="_dbg-angle" type="range" min="0" max="359" step="1" value="${curAngle}" aria-label="Dirección del viento">
+        <div id="_dbg-angle-val" class="dev-panel__val">${curAngle}° · ${bearingLabel(curAngle)}</div>
+      </div>
+
+      <div class="dev-panel__row">
+        <div class="dev-panel__label">HORA</div>
+        <input id="_dbg-hour" type="range" min="0" max="23" step="1" value="${curHour}" aria-label="Hora del día">
+        <div id="_dbg-hour-val" class="dev-panel__val">${curHour}h · ${skyForHour(curHour).label}</div>
+      </div>
+
+      <div id="_dbg-info" class="dev-panel__info"></div>
+    `;
+
+    document.body.appendChild(panel);
+
+    document.getElementById("_dbg-speed")?.addEventListener("input", (e) => {
+      curSpeed = parseFloat((e.target as HTMLInputElement).value);
+      const lbl = document.getElementById("_dbg-speed-val");
+      if (lbl) lbl.textContent = `${curSpeed} km/h`;
+      applyAll();
+    });
+
+    document.getElementById("_dbg-angle")?.addEventListener("input", (e) => {
+      curAngle = parseFloat((e.target as HTMLInputElement).value);
+      const lbl = document.getElementById("_dbg-angle-val");
+      if (lbl) lbl.textContent = `${curAngle}° · ${bearingLabel(curAngle)}`;
+      applyAll();
+    });
+
+    document.getElementById("_dbg-close")?.addEventListener("click", () => {
+      panel.remove();
+    });
+
+    document.getElementById("_dbg-hour")?.addEventListener("input", (e) => {
+      curHour = parseInt((e.target as HTMLInputElement).value, 10);
+      const sky = skyForHour(curHour);
+      const lbl = document.getElementById("_dbg-hour-val");
+      if (lbl) lbl.textContent = `${curHour}h · ${sky.label}`;
+      applyAll();
+    });
+
+    applyAll();
+  }
+</script>
+
+<style is:global>
+  .dev-panel {
+    position: fixed;
+    bottom: 16px;
+    right: 16px;
+    z-index: 9999;
+    width: 250px;
+    padding: 14px 16px;
+    background: rgba(8, 10, 18, 0.88);
+    color: #dde4f0;
+    font: 12px/1.7 monospace;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(10px);
+  }
+
+  .dev-panel__title {
+    font: 700 13px monospace;
+    color: #7dccff;
+    letter-spacing: 0.04em;
+    margin-bottom: 12px;
+  }
+
+  .dev-panel__row {
+    margin-bottom: 10px;
+  }
+
+  .dev-panel__label {
+    color: #888;
+    font-size: 10px;
+    margin-bottom: 2px;
+  }
+
+  .dev-panel input[type="range"] {
+    width: 100%;
+    accent-color: #7dccff;
+    margin-bottom: 2px;
+  }
+
+  .dev-panel__val {
+    font-size: 11px;
+  }
+
+  .dev-panel__close {
+    background: transparent;
+    border: none;
+    color: #888;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 4px;
+    margin: -4px -4px -4px 0;
+    border-radius: 4px;
+    transition:
+      color 0.15s ease,
+      background 0.15s ease;
+  }
+  .dev-panel__close:hover,
+  .dev-panel__close:focus-visible {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+    outline: none;
+  }
+
+  .dev-panel__info {
+    font-size: 10px;
+    color: #666;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding-top: 8px;
+  }
+</style>

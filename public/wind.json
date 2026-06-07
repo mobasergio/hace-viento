@@ -1,0 +1,26 @@
+{
+  "lastUpdate": 1780796929030,
+  "data": {
+    "title": "Hace viento",
+    "subtitle": "Hasta el Lunes 8 a las 15:00",
+    "changeText": "amaina el Lunes 8 a las 15:00",
+    "isWindy": true
+  },
+  "currentWind": "12",
+  "currentWindDirection": "levante",
+  "currentWindKmh": 22,
+  "currentWindDeg": 72,
+  "currentGustKmh": 46,
+  "currentTemp": 20,
+  "currentPrecip": 0,
+  "currentTide": "Baja",
+  "forecast": [
+    { "label": "03h", "speedKmh": 22, "windDeg": 72 },
+    { "label": "05h", "speedKmh": 43, "windDeg": 83 },
+    { "label": "07h", "speedKmh": 39, "windDeg": 82 },
+    { "label": "09h", "speedKmh": 41, "windDeg": 81 },
+    { "label": "11h", "speedKmh": 44, "windDeg": 84 },
+    { "label": "13h", "speedKmh": 46, "windDeg": 85 },
+    { "label": "15h", "speedKmh": 44, "windDeg": 83 }
+  ]
+}

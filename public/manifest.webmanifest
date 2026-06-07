@@ -1,0 +1,11 @@
+{
+  "name": "¿Hace viento? Tarifa",
+  "short_name": "Hace viento",
+  "description": "Dirección y velocidad del viento en Tarifa, ahora mismo.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b1a3a",
+  "theme_color": "#0b1a3a",
+  "lang": "es",
+  "icons": [{ "src": "/favicon.ico", "sizes": "32x32", "type": "image/x-icon" }]
+}

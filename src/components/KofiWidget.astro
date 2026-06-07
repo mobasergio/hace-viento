@@ -1,0 +1,201 @@
+---
+interface Props {
+  username: string;
+  type?: "floating-chat";
+  color?: string;
+  textColor?: string;
+  position?: "bottom-right" | "bottom-left" | "top-right" | "top-left";
+  size?: number;
+}
+
+const {
+  username,
+  type = "floating-chat",
+  color = "#0b1a3a",
+  textColor = "#fff",
+  position = "bottom-right",
+  size = 46,
+} = Astro.props;
+
+type Position = NonNullable<Props["position"]>;
+const posMap: Record<Position, string> = {
+  "bottom-right": "bottom: 16px; right: 16px; top: auto; left: auto;",
+  "bottom-left": "bottom: 16px; left: 16px; top: auto; right: auto;",
+  "top-right": "top: 16px; right: 16px; bottom: auto; left: auto;",
+  "top-left": "top: 16px; left: 16px; bottom: auto; right: auto;",
+};
+
+const posCss = posMap[position] || posMap["bottom-right"];
+const popupH = position.includes("right")
+  ? "left: auto !important; right: 16px !important;"
+  : "left: 16px !important; right: auto !important;";
+
+const cssOverrides = `
+  .kofi-placeholder {
+    position: fixed;
+    ${posCss}
+    width: ${size}px;
+    height: ${size}px;
+    border-radius: 50%;
+    background-color: ${color};
+    z-index: 9999;
+    opacity: 1;
+    transition: opacity 0.25s ease;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  body.kofi-ready .kofi-placeholder {
+    opacity: 0;
+  }
+  .floatingchat-container-wrap,
+  .floatingchat-container-wrap-mobi {
+    ${posCss}
+    width: ${size}px !important;
+    max-width: ${size}px !important;
+    height: ${size}px !important;
+    opacity: 0 !important;
+    background: transparent !important;
+    border-radius: 50% !important;
+    overflow: hidden !important;
+  }
+  body.kofi-ready .floatingchat-container-wrap,
+  body.kofi-ready .floatingchat-container-wrap-mobi {
+    opacity: 1 !important;
+  }
+  .floatingchat-container,
+  .floatingchat-container-mobi {
+    width: ${size}px !important;
+    height: ${size}px !important;
+  }
+  .floating-chat-kofi-popup-iframe,
+  .floating-chat-kofi-popup-iframe-mobi {
+    ${popupH}
+  }
+`;
+---
+
+<div class="kofi-placeholder" aria-hidden="true"></div>
+
+<style set:html={cssOverrides} is:inline></style>
+
+<script
+  is:inline
+  src="https://storage.ko-fi.com/cdn/scripts/overlay-widget.js"
+  onload="window.__kofiLoaded=true;window.dispatchEvent(new Event('kofi-ready'));"
+  onerror="window.__kofiError=true;window.dispatchEvent(new Event('kofi-failed'));"
+></script>
+
+<script is:inline define:vars={{ username, type, color, textColor }}>
+  (function () {
+    function init() {
+      if (typeof kofiWidgetOverlay === "undefined") return;
+      kofiWidgetOverlay.draw(username, {
+        type: type,
+        "floating-chat.donateButton.text": "",
+        "floating-chat.donateButton.background-color": color,
+        "floating-chat.donateButton.text-color": textColor,
+      });
+    }
+    if (window.__kofiLoaded) {
+      init();
+    } else {
+      window.addEventListener("kofi-ready", init, { once: true });
+      setTimeout(function () {
+        if (!window.__kofiLoaded) init();
+      }, 3000);
+    }
+  })();
+</script>
+
+<script is:inline define:vars={{ size, color }}>
+  (function () {
+    const placeholder = document.querySelector(".kofi-placeholder");
+    const card = document.querySelector(".card");
+    const cardBg = card
+      ? getComputedStyle(card).getPropertyValue("--card-bg").trim()
+      : null;
+    const activeColor = cardBg || color;
+
+    if (placeholder && activeColor) {
+      placeholder.style.backgroundColor = activeColor;
+    }
+
+    function styleKofiButton(iframe) {
+      try {
+        const doc = iframe.contentDocument || iframe.contentWindow?.document;
+        if (!doc) return false;
+        const btn = doc.querySelector(".floatingchat-donate-button");
+        if (!btn) return false;
+
+        if (activeColor) btn.style.backgroundColor = activeColor;
+
+        if (doc.documentElement)
+          doc.documentElement.style.background = "transparent";
+        if (doc.body) doc.body.style.background = "transparent";
+
+        btn.style.borderRadius = "50%";
+        btn.style.width = size + "px";
+        btn.style.height = size + "px";
+        btn.style.padding = "0";
+        btn.style.justifyContent = "center";
+        btn.style.overflow = "hidden";
+
+        const img = btn.querySelector(".kofiimg");
+        if (img) {
+          img.style.margin = "0";
+          img.style.width = "30px";
+          img.style.height = "auto";
+        }
+
+        const span = btn.querySelector("span");
+        if (span) span.style.display = "none";
+
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    function syncWidget() {
+      const selectors = [
+        ".floatingchat-container-wrap iframe",
+        ".floatingchat-container-wrap-mobi iframe",
+      ];
+      let allDone = true;
+      selectors.forEach((sel) => {
+        const iframe = document.querySelector(sel);
+        if (iframe && !styleKofiButton(iframe)) allDone = false;
+      });
+      return allDone;
+    }
+
+    let attempts = 0;
+    const maxAttempts = 40;
+    const interval = setInterval(() => {
+      attempts++;
+      const done = syncWidget();
+      if (done || attempts >= maxAttempts) {
+        document.body.classList.add("kofi-ready");
+        clearInterval(interval);
+      }
+    }, 250);
+
+    window.addEventListener(
+      "kofi-failed",
+      () => {
+        clearInterval(interval);
+        document.body.classList.add("kofi-ready");
+        if (placeholder) {
+          placeholder.style.pointerEvents = "auto";
+          placeholder.style.cursor = "pointer";
+          placeholder.innerHTML =
+            '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;width:20px;height:20px;"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>';
+          placeholder.addEventListener("click", () => {
+            window.open("https://ko-fi.com/" + username, "_blank");
+          });
+        }
+      },
+      { once: true },
+    );
+  })();
+</script>

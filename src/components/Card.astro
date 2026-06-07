@@ -1,0 +1,538 @@
+---
+import type { Sky } from "../lib/wind/sky";
+import type { Intensity } from "../lib/wind/intensity";
+import type { Direction } from "../lib/wind/direction";
+import type { RainState } from "../lib/wind/rain";
+import type { ForecastEntry } from "../lib/wind/data";
+import { rainLineFor } from "../lib/wind/rain";
+import { timeUntilNext } from "../lib/timeAgo";
+import AnswerBlock from "./AnswerBlock.astro";
+import AnimatedCounter from "./AnimatedCounter.astro";
+import HourForecast from "./HourForecast.astro";
+import ExpandPanel from "./ExpandPanel.astro";
+
+interface Props {
+  speed: number;
+  speedKt: number;
+  windAngle: number;
+  direction: Direction;
+  intensity: Intensity;
+  sky: Sky;
+  rain: RainState;
+  forecast: ForecastEntry[];
+  changeText: string;
+  lastUpdate: number;
+  currentGust: number | null;
+  currentTemp: number | null;
+  currentPrecip: number | null;
+  currentTide: string | null;
+}
+
+const {
+  speed,
+  speedKt,
+  windAngle,
+  direction,
+  intensity,
+  sky,
+  rain = "none",
+  forecast,
+  changeText,
+  lastUpdate,
+  currentGust,
+  currentTemp,
+  currentPrecip,
+  currentTide,
+} = Astro.props;
+
+const rainLine = rainLineFor(rain);
+const updateText = timeUntilNext(lastUpdate);
+const hoursRange =
+  forecast.length >= 2
+    ? `Periodo actual ${forecast[0].label}–${forecast[1].label}`
+    : "Tarifa";
+---
+
+<article
+  class="card"
+  data-intensity-color={intensity.color ?? ""}
+  style={`--card-bg:${sky.cardBg};--card-ink:${sky.cardInk};--muted:${sky.muted};--ink-soft:${sky.inkSoft ?? sky.muted};--card-border:${sky.cardBorder};--accent:${sky.accent};--answer-ink:${intensity.color ?? sky.cardInk};`}
+>
+  <div class="card__meta">
+    <span>{hoursRange}</span>
+    <span id="live-badge" class="live">
+      <span class="live__dot" aria-hidden="true"></span>
+      <span class="sr-only">Datos en</span>
+      <span class="live__text">EN VIVO</span>
+    </span>
+  </div>
+
+  <AnswerBlock intensity={intensity} sky={sky} rainLine={rainLine} />
+
+  <section class="readout" aria-label="Viento actual">
+    <button
+      type="button"
+      class="readout__block readout__block--toggle"
+      id="velocity-toggle"
+      data-kmh={speed}
+      data-kt={speedKt}
+      aria-label={`Velocidad ${speed} km/h. Pulsa para cambiar de unidad.`}
+    >
+      <div class="readout__label">VELOCIDAD</div>
+      <p class="readout__value">
+        <AnimatedCounter value={speed} />
+        <span class="readout__unit">km/h</span>
+      </p>
+    </button>
+    <div class="readout__block readout__block--right">
+      <div class="readout__label">DIRECCIÓN</div>
+      <p class="readout__dir">{direction.primary}</p>
+    </div>
+  </section>
+
+  <HourForecast speed={speed} forecast={forecast} />
+
+  {changeText && <p class="card__change">{changeText}</p>}
+
+  <div class="expand-wrap">
+    <button
+      class="expand-btn"
+      id="expand-btn"
+      type="button"
+      aria-expanded="false"
+      aria-controls="expand-content"
+    >
+      <span>+ AMPLIAR</span>
+    </button>
+  </div>
+
+  <div id="expand-content" class="expand-content" aria-hidden="true">
+    <ExpandPanel
+      windAngle={windAngle}
+      direction={direction}
+      gust={currentGust}
+      temp={currentTemp}
+      precip={currentPrecip}
+      tide={currentTide}
+    />
+  </div>
+
+  <p class="card__updated" data-updated-at={lastUpdate} aria-live="polite">
+    {updateText}
+  </p>
+</article>
+
+<style>
+  .card {
+    position: relative;
+    z-index: 1;
+    width: min(460px, 92vw);
+    background: var(--card-bg);
+    color: var(--card-ink);
+    border-radius: 24px;
+    padding: 32px 36px 26px;
+    border: 1px solid var(--card-border);
+    box-shadow:
+      0 1px 0 color-mix(in srgb, var(--card-ink) 22%, transparent) inset,
+      0 -1px 0 color-mix(in srgb, var(--card-ink) 6%, transparent) inset,
+      0 30px 80px -20px rgb(0 0 0 / 0.45),
+      0 10px 30px -12px color-mix(in srgb, var(--accent) 40%, transparent),
+      0 2px 0 rgb(0 0 0 / 0.12);
+    overflow: hidden;
+    transition:
+      width 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.4s ease;
+    isolation: isolate;
+  }
+
+  .card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--card-ink) 3%, transparent) 0%,
+      transparent 40%,
+      color-mix(in srgb, var(--accent) 4%, transparent) 100%
+    );
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .card::after {
+    content: "";
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 60%, transparent);
+    opacity: 0.65;
+    pointer-events: none;
+  }
+
+  .card:has(.expand-content.is-open) {
+    width: min(560px, 96vw);
+    box-shadow:
+      0 1px 0 color-mix(in srgb, var(--card-ink) 22%, transparent) inset,
+      0 -1px 0 color-mix(in srgb, var(--card-ink) 6%, transparent) inset,
+      0 40px 90px -20px rgb(0 0 0 / 0.5),
+      0 14px 40px -14px color-mix(in srgb, var(--accent) 50%, transparent),
+      0 2px 0 rgb(0 0 0 / 0.14);
+  }
+
+  .card__meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: "JetBrains Mono Variable", ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin-bottom: 22px;
+    font-weight: 500;
+  }
+
+  .live {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .live__dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #2fbc86;
+    box-shadow: 0 0 8px rgb(47 188 134 / 0.6);
+    animation: pulse-dot 2.4s ease-in-out infinite;
+  }
+
+  .live__text {
+    color: var(--card-ink);
+    font-weight: 600;
+    opacity: 0.85;
+  }
+
+  @keyframes pulse-dot {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 rgb(42 168 118 / 0.6);
+    }
+    50% {
+      box-shadow: 0 0 0 6px rgb(42 168 118 / 0);
+    }
+  }
+
+  .live.is-offline .live__dot {
+    background: #c85050;
+    animation: none;
+    box-shadow: none;
+  }
+  .live.is-offline .live__text {
+    color: #c85050;
+  }
+
+  .readout {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    border-top: 1px solid color-mix(in srgb, var(--card-ink) 18%, transparent);
+    border-bottom: 1px solid
+      color-mix(in srgb, var(--card-ink) 18%, transparent);
+    padding: 18px 0;
+    margin: 22px 0 20px;
+    position: relative;
+  }
+
+  .readout::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: -1px;
+    width: 32px;
+    height: 1px;
+    background: var(--accent);
+    opacity: 0.7;
+  }
+
+  .readout__block {
+    flex: 1;
+  }
+  .readout__block--right {
+    text-align: right;
+  }
+
+  button.readout__block--toggle {
+    background: transparent;
+    border: 0;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    border-radius: 8px;
+    padding: 4px 6px;
+    margin: -4px -6px;
+    user-select: none;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.15s ease;
+  }
+  button.readout__block--toggle:hover {
+    background: color-mix(in srgb, var(--card-ink) 6%, transparent);
+  }
+  button.readout__block--toggle:focus-visible {
+    outline: 2px solid var(--card-ink);
+    outline-offset: 2px;
+  }
+  button.readout__block--toggle:active {
+    background: color-mix(in srgb, var(--card-ink) 12%, transparent);
+  }
+
+  .readout__label {
+    font-size: 10px;
+    letter-spacing: 1.2px;
+    color: var(--ink-soft);
+    font-family: "JetBrains Mono Variable", ui-monospace, monospace;
+    font-weight: 600;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+  }
+
+  .readout__value {
+    font-size: 40px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    margin: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+
+  .readout__unit {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    letter-spacing: 0.01em;
+  }
+
+  .readout__dir {
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 1;
+    margin: 0;
+  }
+
+  .card__change {
+    margin: 16px 0 0;
+    font-size: 12px;
+    color: var(--ink-soft);
+    font-family: "JetBrains Mono Variable", ui-monospace, monospace;
+    text-align: center;
+    font-weight: 500;
+  }
+
+  .card__updated {
+    margin: 12px 0 0;
+    font-size: 10px;
+    color: var(--ink-soft);
+    text-align: center;
+    font-family: "JetBrains Mono Variable", ui-monospace, monospace;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    opacity: 0.85;
+  }
+
+  .expand-wrap {
+    text-align: center;
+    margin-top: 18px;
+  }
+
+  .expand-btn {
+    background: color-mix(in srgb, var(--card-ink) 4%, transparent);
+    border: 1px solid color-mix(in srgb, var(--card-ink) 28%, transparent);
+    color: var(--card-ink);
+    font-family: "JetBrains Mono Variable", ui-monospace, monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.2px;
+    padding: 9px 18px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition:
+      background 0.2s ease,
+      border-color 0.2s ease,
+      transform 0.15s ease;
+  }
+
+  .expand-btn:hover,
+  .expand-btn:focus-visible {
+    background: color-mix(in srgb, var(--card-ink) 10%, transparent);
+    border-color: color-mix(in srgb, var(--accent) 60%, var(--card-ink) 40%);
+    outline: none;
+  }
+
+  .expand-btn:focus-visible {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);
+  }
+
+  .expand-btn:active {
+    transform: translateY(1px);
+  }
+
+  .expand-content {
+    max-height: 0;
+    overflow: hidden;
+    transition:
+      max-height 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+      margin-top 0.3s ease;
+    margin-top: 0;
+  }
+
+  .expand-content.is-open {
+    max-height: 600px;
+    margin-top: 18px;
+  }
+</style>
+
+<script>
+  import { timeUntilNext } from "../lib/timeAgo";
+  import { directionFor } from "../lib/wind/direction";
+
+  const updatedEl = document.querySelector<HTMLElement>(".card__updated");
+  const dirEl = document.querySelector<HTMLElement>(".readout__dir");
+  const velBtnEl =
+    document.querySelector<HTMLButtonElement>("#velocity-toggle");
+
+  function renderCountdown() {
+    if (!updatedEl) return;
+    const ts = Number(updatedEl.dataset.updatedAt);
+    if (Number.isFinite(ts)) updatedEl.textContent = timeUntilNext(ts);
+  }
+
+  let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+  let isFetching = false;
+
+  async function refreshWindData() {
+    if (!updatedEl || isFetching) return;
+    isFetching = true;
+    try {
+      const res = await fetch(`/wind.json?t=${Date.now()}`, {
+        cache: "no-store",
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (Number(updatedEl.dataset.updatedAt) === data.lastUpdate) return;
+
+      updatedEl.dataset.updatedAt = String(data.lastUpdate);
+
+      if (velBtnEl) {
+        const kt = parseInt(String(data.currentWind), 10);
+        const kmh = data.currentWindKmh ?? Math.round(kt * 1.852);
+        if (Number.isFinite(kmh)) velBtnEl.dataset.kmh = String(kmh);
+        if (Number.isFinite(kt)) velBtnEl.dataset.kt = String(kt);
+        const isKnots = localStorage.getItem("wind-unit") === "kt";
+        const counter = velBtnEl.querySelector<HTMLElement>("[data-counter]");
+        if (counter) counter.textContent = String(isKnots ? kt : kmh);
+      }
+
+      if (dirEl && Number.isFinite(data.currentWindDeg)) {
+        dirEl.textContent = directionFor(
+          data.currentWindDeg,
+          data.currentWindKmh,
+        ).primary;
+      }
+
+      renderCountdown();
+    } catch {
+      // Silently ignore network errors
+    } finally {
+      isFetching = false;
+    }
+  }
+
+  function scheduleRefresh() {
+    if (refreshTimer) clearTimeout(refreshTimer);
+    refreshTimer = setTimeout(() => {
+      refreshWindData();
+      scheduleRefresh();
+    }, 30 * 60_000);
+  }
+
+  renderCountdown();
+  setInterval(renderCountdown, 60_000);
+  scheduleRefresh();
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      renderCountdown();
+      refreshWindData();
+      scheduleRefresh();
+    } else {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      refreshTimer = null;
+    }
+  });
+
+  const btn = document.querySelector<HTMLButtonElement>("#expand-btn");
+  const content = document.querySelector<HTMLElement>("#expand-content");
+  if (btn && content) {
+    btn.addEventListener("click", () => {
+      const expanded = btn.getAttribute("aria-expanded") === "true";
+      const next = !expanded;
+      btn.setAttribute("aria-expanded", String(next));
+      content.setAttribute("aria-hidden", String(!next));
+      content.classList.toggle("is-open", next);
+      const label = btn.querySelector("span");
+      if (label) label.textContent = next ? "— MENOS" : "+ AMPLIAR";
+    });
+  }
+
+  const velBtn = document.querySelector<HTMLButtonElement>("#velocity-toggle");
+  if (velBtn) {
+    const counter = velBtn.querySelector<HTMLElement>("[data-counter]");
+    const unitEl = velBtn.querySelector<HTMLElement>(".readout__unit");
+    const kmh = Number(velBtn.dataset.kmh);
+    const kt = Number(velBtn.dataset.kt);
+    let isKnots = localStorage.getItem("wind-unit") === "kt";
+
+    const applyUnit = () => {
+      const val = isKnots ? kt : kmh;
+      const unit = isKnots ? "nudos" : "km/h";
+      if (counter) counter.textContent = String(val);
+      if (unitEl) unitEl.textContent = unit;
+      velBtn.setAttribute(
+        "aria-label",
+        `Velocidad ${val} ${unit}. Pulsa para cambiar unidad.`,
+      );
+    };
+
+    if (counter && unitEl && Number.isFinite(kmh) && Number.isFinite(kt)) {
+      if (isKnots) setTimeout(applyUnit, 650);
+
+      velBtn.addEventListener("click", () => {
+        isKnots = !isKnots;
+        localStorage.setItem("wind-unit", isKnots ? "kt" : "kmh");
+        applyUnit();
+      });
+    }
+  }
+
+  const liveBadge = document.getElementById("live-badge");
+  const liveText = liveBadge?.querySelector(".live__text");
+  if (liveBadge && liveText) {
+    const apply = () => {
+      const offline = !navigator.onLine;
+      liveBadge.classList.toggle("is-offline", offline);
+      liveText.textContent = offline ? "SIN CONEXIÓN" : "EN VIVO";
+    };
+    apply();
+    window.addEventListener("online", apply);
+    window.addEventListener("offline", apply);
+  }
+</script>

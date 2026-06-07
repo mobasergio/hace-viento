@@ -1,0 +1,116 @@
+---
+import type { ForecastEntry } from "../lib/wind/data";
+import { buildFallbackForecast } from "../lib/wind/forecast";
+
+interface Props {
+  speed: number;
+  forecast: ForecastEntry[];
+}
+
+const { speed, forecast } = Astro.props;
+
+const hours: { label: string; v: number }[] =
+  forecast.length > 0
+    ? forecast.map((e, i) => ({
+        label: i === 0 ? "ahora" : e.label,
+        v: e.speedKmh,
+      }))
+    : buildFallbackForecast(speed);
+
+const max = Math.max(...hours.map((h) => h.v), 10);
+const peak = Math.max(...hours.map((h) => h.v));
+---
+
+<div class="forecast" role="img" aria-label="Previsión de viento por horas">
+  <div class="forecast__bars">
+    {
+      hours.map((h, i) => {
+        const isPeak = h.v === peak;
+        const pct = Math.round((h.v / max) * 100);
+        return (
+          <div
+            class="bar-col"
+            role="listitem"
+            aria-label={`${h.label}: ${h.v} km/h`}
+          >
+            <div
+              class={`bar ${isPeak ? "bar--peak" : ""}`}
+              style={`height:${pct}%;animation-delay:${i * 0.05}s;`}
+              aria-hidden="true"
+            />
+          </div>
+        );
+      })
+    }
+  </div>
+  <div class="forecast__labels">
+    {hours.map((h) => <span class="forecast__label">{h.label}</span>)}
+  </div>
+</div>
+
+<style>
+  .forecast {
+    margin: 0;
+  }
+
+  .forecast__bars {
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+    height: 52px;
+  }
+
+  .bar-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    height: 100%;
+  }
+
+  .bar {
+    width: 100%;
+    max-width: 12px;
+    min-height: 3px;
+    background: color-mix(in srgb, var(--card-ink) 42%, transparent);
+    border-radius: 3px 3px 1px 1px;
+    transform-origin: bottom;
+    animation: bar-grow 0.6s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+    transition: background 0.3s ease;
+  }
+
+  .bar--peak {
+    background: linear-gradient(
+      180deg,
+      var(--accent) 0%,
+      color-mix(in srgb, var(--accent) 70%, var(--card-ink)) 100%
+    );
+    box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 45%, transparent);
+  }
+
+  .forecast__labels {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+  }
+
+  .forecast__label {
+    flex: 1;
+    text-align: center;
+    font-size: 10px;
+    font-family: "JetBrains Mono Variable", ui-monospace, monospace;
+    color: var(--card-ink);
+    font-weight: 500;
+    letter-spacing: 0.3px;
+  }
+
+  @keyframes bar-grow {
+    from {
+      transform: scaleY(0);
+    }
+    to {
+      transform: scaleY(1);
+    }
+  }
+</style>

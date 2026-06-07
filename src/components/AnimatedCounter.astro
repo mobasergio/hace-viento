@@ -1,0 +1,33 @@
+---
+interface Props {
+  value: number;
+  durationMs?: number;
+}
+const { value, durationMs = 600 } = Astro.props;
+---
+
+<span data-counter data-target={value} data-duration={durationMs}>{value}</span>
+
+<script>
+  document.querySelectorAll<HTMLElement>("[data-counter]").forEach((el) => {
+    const target = Number(el.dataset.target);
+    const dur = Number(el.dataset.duration ?? 600);
+    const reduced = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+
+    if (reduced || !Number.isFinite(target)) return;
+
+    el.textContent = "0";
+    const t0 = performance.now();
+
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - t0) / dur);
+      const eased = 1 - Math.pow(1 - t, 3);
+      el.textContent = String(Math.round(target * eased));
+      if (t < 1) requestAnimationFrame(tick);
+    };
+
+    requestAnimationFrame(tick);
+  });
+</script>

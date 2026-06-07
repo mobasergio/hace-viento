@@ -1,0 +1,47 @@
+---
+import Layout from "../layouts/Layout.astro";
+---
+
+<Layout title="404 · ¿Hace viento?">
+  <main>
+    <h1>404.</h1>
+    <p>Esta página no existe, pero el viento sigue soplando.</p>
+    <a href="/">← Volver al inicio</a>
+  </main>
+</Layout>
+
+<style>
+  main {
+    color: #e6edf8;
+    text-align: center;
+    font-family: "JetBrains Mono Variable", ui-monospace, monospace;
+  }
+
+  h1 {
+    font-size: clamp(48px, 14vw, 70px);
+    font-weight: 800;
+    letter-spacing: -0.05em;
+    margin-bottom: 8px;
+  }
+
+  p {
+    opacity: 0.6;
+    font-size: 14px;
+  }
+
+  a {
+    display: inline-block;
+    margin-top: 24px;
+    color: inherit;
+    font-size: 12px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    border-bottom: 1px solid currentColor;
+    padding-bottom: 2px;
+    text-decoration: none;
+  }
+  a:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 4px;
+  }
+</style>

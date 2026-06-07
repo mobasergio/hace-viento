@@ -1,0 +1,111 @@
+---
+import type { Intensity } from "../lib/wind/intensity";
+import type { Sky } from "../lib/wind/sky";
+import type { RainLine } from "../lib/wind/rain";
+
+interface Props {
+  intensity: Intensity;
+  sky: Sky;
+  rainLine: RainLine | null;
+}
+
+const { intensity, sky, rainLine } = Astro.props;
+---
+
+<div class="answer-wrap">
+  <div class="answer">
+    <h1 class="answer__text" style="color:var(--answer-ink);">
+      {
+        intensity.segments.map((seg, i) => (
+          <>
+            <span class:list={[{ answer__dim: seg.dim }]}>{seg.text}</span>
+            {i < intensity.segments.length - 1 && <br />}
+          </>
+        ))
+      }
+    </h1>
+
+    <p class="answer__note" style="color:var(--answer-ink);">
+      {intensity.note}
+    </p>
+  </div>
+
+  {
+    rainLine && (
+      <p
+        class="rain-line"
+        style={`color:${sky.inkSoft ?? sky.muted};border-left:2px solid ${sky.accent};`}
+      >
+        <span class="rain-line__icon">{rainLine.icon}</span>y además,{" "}
+        {rainLine.verb}.
+      </p>
+    )
+  }
+</div>
+
+<style>
+  .answer-wrap {
+    animation: answer-in 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .answer__text {
+    font-size: clamp(48px, 14vw, 70px);
+    line-height: 0.92;
+    font-weight: 800;
+    letter-spacing: -0.05em;
+    margin: 0 0 4px;
+    padding: 0;
+  }
+
+  .answer__dim {
+    opacity: 0.7;
+  }
+
+  .answer__note {
+    font-size: 15px;
+    font-style: italic;
+    font-weight: 400;
+    margin: 4px 0 0;
+  }
+
+  .rain-line {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    font-style: italic;
+    font-weight: 500;
+    margin: 12px 0 0;
+    padding-left: 10px;
+    opacity: 0;
+    animation: fade-in 0.6s ease 0.3s forwards;
+  }
+
+  .rain-line__icon {
+    font-family: "JetBrains Mono Variable", ui-monospace, monospace;
+    font-size: 12px;
+    letter-spacing: 1px;
+  }
+
+  @keyframes answer-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+</style>
