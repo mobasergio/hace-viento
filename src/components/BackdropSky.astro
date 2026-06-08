@@ -1,22 +1,12 @@
 ---
-import type { Sky } from "../lib/wind/sky";
 import type { Intensity } from "../lib/wind/intensity";
-import { discDisplay } from "../lib/wind/sky";
-
-interface SunPos {
-  x: number;
-  y: number;
-  body: "sun" | "moon" | "hidden";
-}
 
 interface Props {
-  sky: Sky;
   intensity: Intensity;
   windAngle: number;
-  sunPos: SunPos;
 }
 
-const { sky, intensity, windAngle, sunPos } = Astro.props;
+const { intensity, windAngle } = Astro.props;
 
 const stars = Array.from({ length: 80 }, (_, i) => ({
   cx: (i * 97 + 13) % 100,
@@ -27,32 +17,9 @@ const stars = Array.from({ length: 80 }, (_, i) => ({
   opMin: (0.15 + (i % 4) * 0.1).toFixed(2),
   opMax: (0.55 + (i % 4) * 0.15).toFixed(2),
 }));
-
-const { discX, discY, haloOpacity, haloW, haloH, baseHalo } = discDisplay(
-  sky,
-  sunPos,
-);
 ---
 
-<div
-  class="backdrop"
-  data-stars={sky.stars ? "true" : "false"}
-  data-disc={sunPos.body}
-  style={`
-    --sky-top:${sky.top};
-    --sky-mid:${sky.mid};
-    --sky-bottom:${sky.bottom};
-    --halo:${sky.horizonGlow};
-    --base-halo:${baseHalo};
-    --accent:${sky.accent};
-    --halo-opacity:${haloOpacity};
-    --halo-w:${haloW};
-    --halo-h:${haloH};
-    --disc-x:${discX};
-    --disc-y:${discY};
-  `}
-  aria-hidden="true"
->
+<div class="backdrop" aria-hidden="true">
   <div class="sky-base"></div>
 
   <div class="horizon-halo"></div>
@@ -78,10 +45,7 @@ const { discX, discY, haloOpacity, haloW, haloH, baseHalo } = discDisplay(
     }
   </svg>
 
-  <div
-    class={`disc ${sunPos.body === "sun" ? "disc--sun" : sunPos.body === "moon" ? "disc--moon" : ""}`}
-  >
-  </div>
+  <div class="disc"></div>
 
   <canvas
     id="wind-canvas"
@@ -99,7 +63,7 @@ const { discX, discY, haloOpacity, haloW, haloH, baseHalo } = discDisplay(
     z-index: 0;
     pointer-events: none;
     overflow: hidden;
-    background: var(--sky-bottom);
+    background: var(--sky-bottom, #0a1132);
   }
 
   .sky-base {
@@ -108,14 +72,14 @@ const { discX, discY, haloOpacity, haloW, haloH, baseHalo } = discDisplay(
     background:
       radial-gradient(
         ellipse 120% 55% at 50% 100%,
-        var(--base-halo) 0%,
+        var(--base-halo, transparent) 0%,
         transparent 55%
       ),
       linear-gradient(
         180deg,
-        var(--sky-top) 0%,
-        var(--sky-mid) 48%,
-        var(--sky-bottom) 100%
+        var(--sky-top, #05071a) 0%,
+        var(--sky-mid, #0a1132) 48%,
+        var(--sky-bottom, #141e44) 100%
       );
   }
 
@@ -126,11 +90,11 @@ const { discX, discY, haloOpacity, haloW, haloH, baseHalo } = discDisplay(
     bottom: -20%;
     height: 70%;
     background: radial-gradient(
-      ellipse var(--halo-w) var(--halo-h) at var(--disc-x) 100%,
-      var(--halo) 0%,
+      ellipse var(--halo-w, 75%) var(--halo-h, 100%) at var(--disc-x, 50%) 100%,
+      var(--halo, #1a1c46) 0%,
       transparent 58%
     );
-    opacity: var(--halo-opacity);
+    opacity: var(--halo-opacity, 0.35);
     mix-blend-mode: screen;
   }
 
@@ -164,8 +128,8 @@ const { discX, discY, haloOpacity, haloW, haloH, baseHalo } = discDisplay(
 
   .disc {
     position: absolute;
-    left: var(--disc-x);
-    top: var(--disc-y);
+    left: var(--disc-x, 50%);
+    top: var(--disc-y, 50%);
     transform: translate(-50%, -50%);
     pointer-events: none;
   }

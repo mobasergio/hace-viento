@@ -5,7 +5,6 @@ import Card from "../components/Card.astro";
 import KofiWidget from "../components/KofiWidget.astro";
 import { intensityFor } from "../lib/wind/intensity";
 import { directionFor } from "../lib/wind/direction";
-import { skyForDate, sunPosition } from "../lib/wind/sky";
 import type { RainState } from "../lib/wind/rain";
 import { WindDataSchema } from "../lib/wind/data";
 import type { WindData } from "../lib/wind/data";
@@ -39,9 +38,6 @@ const windData: WindData = parsed.success
 
 const tzNow = nowInMadrid();
 const hour = tzNow.getHours();
-const now = new Date();
-const sky = skyForDate(now);
-const sunPos = sunPosition(now);
 
 const speedKt = parseInt(windData.currentWind, 10);
 const speed = windData.currentWindKmh ?? Math.round(speedKt * 1.852);
@@ -75,8 +71,7 @@ const jsonLd = JSON.stringify({
   url: "https://www.haceviento.com",
   applicationCategory: "WeatherApplication",
   operatingSystem: "Any",
-  description:
-    "Dirección, velocidad y previsión del viento en Tarifa en tiempo real.",
+  description: "Dirección, velocidad y previsión del viento en Tarifa en tiempo real.",
   offers: { "@type": "Offer", price: "0", priceCurrency: "EUR" },
 });
 ---
@@ -85,10 +80,8 @@ const jsonLd = JSON.stringify({
   <script is:inline type="application/ld+json" slot="head" set:html={jsonLd} />
 
   <BackdropSky
-    sky={sky}
     intensity={intensity}
     windAngle={windAngle}
-    sunPos={sunPos}
   />
 
   <main>
@@ -98,7 +91,6 @@ const jsonLd = JSON.stringify({
       windAngle={windAngle}
       direction={direction}
       intensity={intensity}
-      sky={sky}
       rain={rain}
       forecast={forecast}
       changeText={changeText}
@@ -115,7 +107,6 @@ const jsonLd = JSON.stringify({
   <KofiWidget
     slot="floating-widgets"
     username="mobasergio"
-    color={sky.cardBg}
     textColor="#fff"
     position="bottom-right"
     size={46}

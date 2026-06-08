@@ -5,7 +5,7 @@ import type { RainLine } from "../lib/wind/rain";
 
 interface Props {
   intensity: Intensity;
-  sky: Sky;
+  sky?: Sky;
   rainLine: RainLine | null;
 }
 
@@ -34,7 +34,7 @@ const { intensity, sky, rainLine } = Astro.props;
     rainLine && (
       <p
         class="rain-line"
-        style={`color:${sky.inkSoft ?? sky.muted};border-left:2px solid ${sky.accent};`}
+        style={`color:${sky?.inkSoft ?? sky?.muted ?? "var(--ink-soft)"};border-left:2px solid ${sky?.accent ?? "var(--accent)"};`}
       >
         <span class="rain-line__icon">{rainLine.icon}</span>y además,{" "}
         {rainLine.verb}.

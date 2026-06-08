@@ -1,5 +1,5 @@
 ---
-import type { Sky } from "../lib/wind/sky";
+
 import type { Intensity } from "../lib/wind/intensity";
 import type { Direction } from "../lib/wind/direction";
 import type { RainState } from "../lib/wind/rain";
@@ -17,7 +17,6 @@ interface Props {
   windAngle: number;
   direction: Direction;
   intensity: Intensity;
-  sky: Sky;
   rain: RainState;
   forecast: ForecastEntry[];
   changeText: string;
@@ -34,7 +33,6 @@ const {
   windAngle,
   direction,
   intensity,
-  sky,
   rain = "none",
   forecast,
   changeText,
@@ -56,7 +54,7 @@ const hoursRange =
 <article
   class="card"
   data-intensity-color={intensity.color ?? ""}
-  style={`--card-bg:${sky.cardBg};--card-ink:${sky.cardInk};--muted:${sky.muted};--ink-soft:${sky.inkSoft ?? sky.muted};--card-border:${sky.cardBorder};--accent:${sky.accent};--answer-ink:${intensity.color ?? sky.cardInk};`}
+  style={`--answer-ink:${intensity.color ?? ""};`}
 >
   <div class="card__meta">
     <span>{hoursRange}</span>
@@ -67,7 +65,7 @@ const hoursRange =
     </span>
   </div>
 
-  <AnswerBlock intensity={intensity} sky={sky} rainLine={rainLine} />
+  <AnswerBlock intensity={intensity} rainLine={rainLine} />
 
   <section class="readout" aria-label="Viento actual">
     <button
@@ -123,6 +121,16 @@ const hoursRange =
 </article>
 
 <style>
+.card {
+    --card-bg: #0a1130;
+    --card-ink: #f2f5ff;
+    --muted: rgba(242,245,255,0.72);
+    --ink-soft: #b9c4e0;
+    --card-border: rgba(125,179,255,0.20);
+    --accent: #7db3ff;
+    --answer-ink: #f2f5ff;
+  }
+
   .card {
     position: relative;
     z-index: 1;
