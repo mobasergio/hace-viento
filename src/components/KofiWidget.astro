@@ -25,8 +25,12 @@ const posMap: Record<Position, string> = {
   "top-left": "top: 16px; left: 16px; bottom: auto; right: auto;",
 };
 
-const posCss = posMap[position] || posMap["bottom-right"];
-const popupH = position.includes("right")
+const isPosition = (p: string | undefined): p is Position =>
+  !!p && p in posMap;
+
+const safePosition = isPosition(position) ? position : "bottom-right";
+const posCss = posMap[safePosition];
+const popupH = safePosition.includes("right")
   ? "left: auto !important; right: 16px !important;"
   : "left: 16px !important; right: auto !important;";
 
